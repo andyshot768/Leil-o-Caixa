@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Imóveis Caixa SC</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+:root {
+  --bg:#0d1117; --surface:#161b22; --surface2:#1c2128; --border:#30363d;
+  --accent:#e6b44a; --accent2:#4a9eff; --accent3:#5cb85c; --danger:#e05252;
+  --text:#e6edf3; --muted:#8b949e;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* HEADER */
+header{
+  padding:24px 32px 18px;
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:12px;
+  background:linear-gradient(135deg,#0d1117 0%,#1a1200 100%);
+}
+header h1{font-family:'DM Serif Display',serif;font-size:24px;color:var(--accent);}
+header p{font-size:13px;color:var(--muted);margin-top:4px;}
+.badge{background:var(--accent);color:#000;font-weight:700;font-size:12px;padding:4px 12px;border-radius:20px;}
+
+/* TABS */
+.tab-bar{display:flex;border-bottom:1px solid var(--border);background:var(--bg);padding:0 32px;}
+.tab-btn{
+  background:none;border:none;border-bottom:2px solid transparent;
+  color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;
+  padding:12px 20px;cursor:pointer;transition:all .15s;margin-bottom:-1px;
+}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-btn:hover:not(.active){color:var(--text);}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+/* CONTAINER */
+.container{max-width:1400px;margin:0 auto;padding:24px;}
+
+/* KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:22px;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--kpi-color,var(--accent));}
+.kpi .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;}
+.kpi .val{font-size:22px;font-weight:700;color:var(--kpi-color,var(--accent));}
+.kpi .sub{font-size:11px;color:var(--muted);margin-top:3px;}
+
+/* CHARTS */
+.charts-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;}
+.chart-card h3{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:12px;}
+
+/* FILTERS */
+.filters{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:14px 18px;margin-bottom:18px;
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+}
+.filters select,.filters input[type=text]{
+  background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  border-radius:6px;padding:6px 10px;font-size:13px;font-family:'DM Sans',sans-serif;
+}
+.filters input[type=text]{width:180px;}
+.filters select:focus,.filters input:focus{outline:1px solid var(--accent);}
+.f-sep{width:1px;height:28px;background:var(--border);}
+.f-count{font-size:12px;color:var(--muted);margin-left:auto;}
+.btn-reset{
+  background:none;border:1px solid var(--border);color:var(--muted);
+  border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;
+}
+.btn-reset:hover{border-color:var(--accent);color:var(--accent);}
+
+/* SORT */
+.sort-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.sort-bar span{font-size:12px;color:var(--muted);}
+.sort-btn{
+  background:var(--surface2);border:1px solid var(--border);color:var(--muted);
+  border-radius:6px;padding:5px 11px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;
+  transition:all .15s;
+}
+.sort-btn.active{border-color:var(--accent);color:var(--accent);background:#e6b44a15;}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{
+  background:var(--surface2);padding:10px 14px;text-align:left;
+  font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);
+  border-bottom:1px solid var(--border);white-space:nowrap;
+}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s;cursor:pointer;}
+tbody tr:hover{background:var(--surface2);}
+tbody tr:last-child{border-bottom:none;}
+td{padding:10px 14px;vertical-align:middle;}
+td.num{font-variant-numeric:tabular-nums;font-weight:500;}
+td .sub{font-size:11px;color:var(--muted);}
+
+/* CHIPS */
+.chip{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap;}
+.chip-Casa{background:#4a9eff22;border:1px solid #4a9eff;color:#4a9eff;}
+.chip-Apartamento{background:#8b5cf622;border:1px solid #8b5cf6;color:#8b5cf6;}
+.chip-Terreno{background:#e6b44a22;border:1px solid #e6b44a;color:#e6b44a;}
+.chip-Galpão{background:#5cb85c22;border:1px solid #5cb85c;color:#5cb85c;}
+.chip-Outro{background:#8b949e22;border:1px solid #8b949e;color:#8b949e;}
+
+/* DESCONTO BADGE */
+.db{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:700;font-size:12px;min-width:46px;text-align:center;}
+.db-high{background:#5cb85c22;border:1px solid #5cb85c;color:#5cb85c;}
+.db-mid{background:#e6b44a22;border:1px solid #e6b44a;color:#e6b44a;}
+.db-low{background:#8b949e22;border:1px solid #8b949e;color:#8b949e;}
+.db-neg{background:#e0525222;border:1px solid #e05252;color:#e05252;}
+
+.econ-pos{color:var(--accent3);}
+.econ-neg{color:var(--danger);}
+
+/* LINK BTN */
+.link-btn{
+  display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;
+  border-radius:6px;background:var(--surface2);border:1px solid var(--border);
+  color:var(--accent2);text-decoration:none;font-size:14px;transition:all .15s;
+}
+.link-btn:hover{border-color:var(--accent2);background:#4a9eff15;}
+
+/* PAGINATION */
+.pagination{display:flex;align-items:center;gap:8px;margin-top:14px;justify-content:center;flex-wrap:wrap;}
+.page-btn{
+  background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;
+}
+.page-btn.active{border-color:var(--accent);color:var(--accent);}
+.page-btn:disabled{opacity:.3;cursor:default;}
+
+/* MODAL */
+.modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;
+  align-items:center;justify-content:center;padding:20px;
+}
+.modal-overlay.open{display:flex;}
+.modal{
+  background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  max-width:560px;width:100%;padding:28px;position:relative;max-height:90vh;overflow-y:auto;
+}
+.modal-close{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;}
+.modal h2{font-family:'DM Serif Display',serif;font-size:22px;margin-bottom:6px;}
+.modal-addr{font-size:13px;color:var(--muted);margin-bottom:16px;}
+.ftag{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:6px;margin-bottom:14px;}
+.ftag-sim{background:#5cb85c22;border:1px solid #5cb85c;color:#5cb85c;}
+.ftag-nao{background:#8b949e22;border:1px solid #8b949e;color:#8b949e;}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}
+.mi .mi-lbl{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:4px;}
+.mi .mi-val{font-size:18px;font-weight:700;}
+.mi-accent{color:var(--accent);}
+.mi-green{color:var(--accent3);}
+.mi-red{color:var(--danger);}
+.mi-blue{color:var(--accent2);}
+.modal-mod{font-size:13px;color:var(--muted);line-height:1.6;padding:12px 14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);margin-bottom:16px;}
+.modal-cta{
+  display:flex;align-items:center;gap:8px;background:var(--accent);color:#000;
+  font-weight:700;text-decoration:none;padding:12px 18px;border-radius:8px;
+  font-size:14px;justify-content:center;transition:opacity .15s;
+}
+.modal-cta:hover{opacity:.85;}
+
+/* ── MAP TAB ── */
+.map-panel{padding:24px;max-width:1400px;margin:0 auto;}
+.map-controls{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:16px 20px;margin-bottom:12px;
+  display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;
+}
+.mcg{display:flex;flex-direction:column;gap:5px;}
+.mcg label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;}
+.mcg input,.mcg select{
+  background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  border-radius:6px;padding:7px 12px;font-size:13px;font-family:'DM Sans',sans-serif;min-width:150px;
+}
+.mcg input:focus,.mcg select:focus{outline:1px solid var(--accent);}
+.btn-search{
+  background:var(--accent);border:none;color:#000;border-radius:6px;
+  padding:8px 22px;font-size:13px;font-weight:700;cursor:pointer;
+  font-family:'DM Sans',sans-serif;align-self:flex-end;transition:opacity .15s;
+}
+.btn-search:hover{opacity:.85;}
+.btn-search:disabled{opacity:.4;cursor:default;}
+#map-wrap{width:100%;height:520px;border-radius:10px;border:1px solid var(--border);overflow:hidden;background:var(--surface2);}
+.map-footer{display:flex;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap;gap:8px;}
+.map-status{font-size:12px;color:var(--muted);min-height:18px;}
+.map-status.ok{color:var(--accent3);}
+.map-status.err{color:var(--danger);}
+.map-status.loading{color:var(--accent);}
+.legend{display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
+.leg{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);}
+.leg-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+
+@media(max-width:900px){.charts-row{grid-template-columns:1fr;}}
+@media(max-width:600px){header{padding:18px 16px;}.container,.map-panel{padding:16px;}.mgrid{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🏠 Imóveis Caixa — Santa Catarina</h1>
+    <p>Análise de oportunidades · 27/03/2026</p>
+  </div>
+  <span class="badge" id="badge-total">160 imóveis</span>
+</header>
+
+<div class="tab-bar">
+  <button class="tab-btn active" data-tab="lista">📋 Lista</button>
+  <button class="tab-btn" data-tab="mapa">🗺️ Mapa</button>
+</div>
+
+<!-- ══ TAB: LISTA ══════════════════════════════════════════════ -->
+<div id="tab-lista" class="tab-panel active">
+<div class="container">
+
+  <div class="kpi-row">
+    <div class="kpi" style="--kpi-color:#e6b44a">
+      <div class="lbl">Total</div><div class="val" id="kpi-total">160</div><div class="sub">filtro atual</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#4a9eff">
+      <div class="lbl">Preço Médio</div><div class="val" id="kpi-medio">—</div><div class="sub">filtro atual</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#5cb85c">
+      <div class="lbl">Maior Desconto</div><div class="val" id="kpi-maxdesc">—</div><div class="sub">filtro atual</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#e6b44a">
+      <div class="lbl">Economia Total</div><div class="val" id="kpi-economia">—</div><div class="sub">soma positivos</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#8b5cf6">
+      <div class="lbl">Com Financ.</div><div class="val" id="kpi-financ">—</div><div class="sub">filtro atual</div>
+    </div>
+    <div class="kpi" style="--kpi-color:#e05252">
+      <div class="lbl">Preço Mínimo</div><div class="val" id="kpi-min">—</div><div class="sub">filtro atual</div>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card"><h3>Por Tipo</h3><div style="height:160px"><canvas id="chart-tipo"></canvas></div></div>
+    <div class="chart-card"><h3>Top Cidades</h3><div style="height:160px"><canvas id="chart-cidades"></canvas></div></div>
+    <div class="chart-card"><h3>Faixa de Preço</h3><div style="height:160px"><canvas id="chart-preco"></canvas></div></div>
+  </div>
+
+  <div class="filters">
+    <input type="text" id="f-busca" placeholder="🔍  Cidade, bairro, endereço...">
+    <div class="f-sep"></div>
+    <select id="f-tipo"><option value="">Tipo</option><option>Casa</option><option>Apartamento</option><option>Terreno</option><option>Galpão</option></select>
+    <select id="f-cidade"><option value="">Cidade</option></select>
+    <select id="f-modalidade">
+      <option value="">Modalidade</option>
+      <option>Leilão SFI - Edital Único</option>
+      <option>Licitação Aberta</option>
+      <option>Venda Direta Online</option>
+      <option>Venda Online</option>
+    </select>
+    <select id="f-financ"><option value="">Financ.</option><option value="Sim">Sim</option><option value="Não">Não</option></select>
+    <select id="f-desconto"><option value="0">Desconto</option><option value="20">≥ 20%</option><option value="30">≥ 30%</option><option value="40">≥ 40%</option></select>
+    <select id="f-preco"><option value="">Preço máx.</option><option value="150000">até R$150k</option><option value="300000">até R$300k</option><option value="500000">até R$500k</option><option value="1000000">até R$1M</option></select>
+    <span class="f-count" id="f-count">160 resultados</span>
+    <button class="btn-reset" onclick="resetFilters()">↺ Limpar</button>
+  </div>
+
+  <div class="sort-bar">
+    <span>Ordenar:</span>
+    <button class="sort-btn active" data-sort="desconto">Maior Desconto</button>
+    <button class="sort-btn" data-sort="preco_asc">Menor Preço</button>
+    <button class="sort-btn" data-sort="preco_desc">Maior Preço</button>
+    <button class="sort-btn" data-sort="economia">Maior Economia</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Tipo</th><th>Cidade / Bairro</th><th>Endereço</th>
+          <th>Preço</th><th>Avaliação</th><th>Desconto</th><th>Economia</th>
+          <th>Modalidade</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <div class="pagination" id="pagination"></div>
+
+</div>
+</div><!-- /tab-lista -->
+
+<!-- ══ TAB: MAPA ═══════════════════════════════════════════════ -->
+<div id="tab-mapa" class="tab-panel">
+<div class="map-panel">
+
+  <div class="map-controls">
+    <div class="mcg">
+      <label>Cidade de referência</label>
+      <input type="text" id="map-cidade" placeholder="ex: Joinville" list="map-cidades-dl">
+      <datalist id="map-cidades-dl"></datalist>
+    </div>
+    <div class="mcg">
+      <label>Raio</label>
+      <select id="map-raio">
+        <option value="20">20 km</option>
+        <option value="50" selected>50 km</option>
+        <option value="100">100 km</option>
+        <option value="200">200 km</option>
+        <option value="500">500 km (todos)</option>
+      </select>
+    </div>
+    <div class="mcg">
+      <label>Tipo</label>
+      <select id="map-tipo"><option value="">Todos</option><option>Casa</option><option>Apartamento</option><option>Terreno</option><option>Galpão</option></select>
+    </div>
+    <div class="mcg">
+      <label>Desconto mín.</label>
+      <select id="map-desc"><option value="0">Qualquer</option><option value="20">≥ 20%</option><option value="30">≥ 30%</option><option value="40">≥ 40%</option></select>
+    </div>
+    <button class="btn-search" id="btn-buscar" onclick="buscarMapa()">🔍 Buscar</button>
+  </div>
+
+  <div class="map-status" id="map-status"></div>
+  <div id="map-wrap"></div>
+
+  <div class="map-footer">
+    <div style="font-size:13px;color:var(--muted)"><strong id="map-count" style="color:var(--text)">—</strong> imóveis no raio</div>
+    <div class="legend">
+      <div class="leg"><div class="leg-dot" style="background:#5cb85c"></div>Desconto ≥40%</div>
+      <div class="leg"><div class="leg-dot" style="background:#e6b44a"></div>20–39%</div>
+      <div class="leg"><div class="leg-dot" style="background:#4a9eff"></div>&lt;20%</div>
+      <div class="leg"><div class="leg-dot" style="background:#8b949e"></div>Sem desconto</div>
+    </div>
+  </div>
+
+</div>
+</div><!-- /tab-mapa -->
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div id="m-tipo" style="margin-bottom:8px"></div>
+    <h2 id="m-titulo"></h2>
+    <div class="modal-addr" id="m-addr"></div>
+    <div id="m-financ"></div>
+    <div class="mgrid">
+      <div class="mi"><div class="mi-lbl">Preço de Venda</div><div class="mi-val mi-accent" id="m-preco"></div></div>
+      <div class="mi"><div class="mi-lbl">Valor de Avaliação</div><div class="mi-val" id="m-aval"></div></div>
+      <div class="mi"><div class="mi-lbl">Desconto</div><div class="mi-val" id="m-desc"></div></div>
+      <div class="mi"><div class="mi-lbl">Economia</div><div class="mi-val" id="m-econ"></div></div>
+      <div class="mi"><div class="mi-lbl">Área Total</div><div class="mi-val mi-blue" id="m-area"></div></div>
+      <div class="mi"><div class="mi-lbl">Área Terreno</div><div class="mi-val mi-blue" id="m-terreno"></div></div>
+      <div class="mi"><div class="mi-lbl">Quartos</div><div class="mi-val" id="m-quartos"></div></div>
+      <div class="mi"><div class="mi-lbl">Preço/m²</div><div class="mi-val" id="m-m2"></div></div>
+    </div>
+    <div class="modal-mod" id="m-mod"></div>
+    <a id="m-link" href="#" target="_blank" class="modal-cta">🔗 Ver na Caixa Econômica</a>
+  </div>
+</div>
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────────────────
+const DATA = [{"id": "10203835", "cidade": "AGROLANDIA", "bairro": "CENTRO", "endereco": "RUA RICARDO HOBUS, N. 00, LT 01-E", "tipo": "Terreno", "preco": 191422.88, "avaliacao": 330000.0, "desconto": 42.0, "economia": 138577.12, "area_terreno": 2018.0, "area_total": null, "quartos": 0, "modalidade": "Venda Direta Online", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=10203835", "preco_m2": null}, {"id": "10203836", "cidade": "AGROLANDIA", "bairro": "CENTRO", "endereco": "RUA RICARDO HOBUS, N. 00, LT 01-D", "tipo": "Terreno", "preco": 261031.2, "avaliacao": 450000.0, "desconto": 42.0, "economia": 188968.8, "area_terreno": 2000.0, "area_total": null, "quartos": 0, "modalidade": "Venda Direta Online", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=10203836", "preco_m2": null}, {"id": "8444416200800", "cidade": "ARAQUARI", "bairro": "ITINGA", "endereco": "SAO BENTO DO SUL, N. 668, CS 004", "tipo": "Casa", "preco": 117649.08, "avaliacao": 229000.0, "desconto": 48.63, "economia": 111350.92, "area_terreno": 81.5, "area_total": 45.51, "quartos": 2, "modalidade": "Venda Online", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444416200800", "preco_m2": 2585.13}, {"id": "8444420114506", "cidade": "ARAQUARI", "bairro": "ITINGA", "endereco": "R OSWALDO BARBOSA FERREIRA, N. 54, Apto 101-, BL A", "tipo": "Apartamento", "preco": 115467.48, "avaliacao": 205000.0, "desconto": 43.68, "economia": 89532.52, "area_terreno": 0.0, "area_total": null, "quartos": 0, "modalidade": "Venda Direta Online", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444420114506", "preco_m2": null}, {"id": "8787711188177", "cidade": "ARAQUARI", "bairro": "Porto Grande", "endereco": "RUA JOSE JULHO MOREIRA, N. 3900, CS 02", "tipo": "Casa", "preco": 179099.06, "avaliacao": 300000.0, "desconto": 40.31, "economia": 120900.94, "area_terreno": 69.9, "area_total": 50.88, "quartos": 2, "modalidade": "Venda Online", "financiamento": "Sim", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787711188177", "preco_m2": 3520.03}, {"id": "8444427292280", "cidade": "ARARANGUA", "bairro": "INDUSTRIAL", "endereco": "RUA ANTONINA PEREIRA DE SOUZA, N. SN, LT 02  QD F", "tipo": "Casa", "preco": 118162.84, "avaliacao": 195500.0, "desconto": 39.56, "economia": 77337.16, "area_terreno": 300.0, "area_total": null, "quartos": 0, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444427292280", "preco_m2": null}, {"id": "1444422980032", "cidade": "ARARANGUA", "bairro": "URUSSANGUINHA", "endereco": "RUA ALBINO PEREIRA DE SOUZA, N. 107,", "tipo": "Casa", "preco": 367093.04, "avaliacao": 576000.0, "desconto": 36.27, "economia": 208906.96000000002, "area_terreno": 432.0, "area_total": 123.71, "quartos": 3, "modalidade": "Venda Direta Online", "financiamento": "Sim", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444422980032", "preco_m2": 2967.37}, {"id": "8444425538479", "cidade": "ARARANGUA", "bairro": "CAVERAZINHO", "endereco": "RUA F, N. 158, QD D LT 30", "tipo": "Casa", "preco": 230000.0, "avaliacao": 230000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 313.69, "area_total": 40.43, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444425538479", "preco_m2": 5688.84}, {"id": "1444420664702", "cidade": "AURORA", "bairro": "CENTRO", "endereco": "SEIS DE JUNHO, N. S/N, CS, ÁREA 02", "tipo": "Casa", "preco": 429812.29, "avaliacao": 350000.0, "desconto": 0.0, "economia": -79812.28999999998, "area_terreno": 8100.0, "area_total": 120.0, "quartos": 3, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444420664702", "preco_m2": 3581.77}, {"id": "8555506723766", "cidade": "BALNEARIO CAMBORIU", "bairro": "SAO JUDAS TADEU", "endereco": "RUA DANIEL VIEIRA, N. 315, Apto 35, BL K", "tipo": "Apartamento", "preco": 388500.0, "avaliacao": 388500.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 50.37, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8555506723766", "preco_m2": 7712.92}, {"id": "1444400624799", "cidade": "BALNEARIO CAMBORIU", "bairro": "CENTRO", "endereco": "AVENIDA ATLANTICA, N. 4104, Apto 504,", "tipo": "Apartamento", "preco": 1550000.0, "avaliacao": 1442000.0, "desconto": 0.0, "economia": -108000.0, "area_terreno": 0.0, "area_total": 103.53, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444400624799", "preco_m2": 14971.51}, {"id": "1444402342529", "cidade": "BALNEARIO RINCAO", "bairro": "CENTRO", "endereco": "RUA OLANDIA FELISBINA ROCHA (ANTIGA RUA L), N. SN, QD 98 LT 15", "tipo": "Terreno", "preco": 155000.0, "avaliacao": 155000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 288.0, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444402342529", "preco_m2": null}, {"id": "8444404162933", "cidade": "BALNEARIO RINCAO", "bairro": "PRAIA DO RINCAO", "endereco": "AVENIDA OLINDINA FELISBINA ROCHA, N. SN, QD 91, LT 23", "tipo": "Casa", "preco": 143219.88, "avaliacao": 125000.0, "desconto": 0.0, "economia": -18219.880000000005, "area_terreno": 288.0, "area_total": null, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444404162933", "preco_m2": null}, {"id": "8444409981169", "cidade": "BARRA VELHA", "bairro": "ITAJUBA", "endereco": "RUA 1146, N. 567, CS 02", "tipo": "Casa", "preco": 268000.0, "avaliacao": 268000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 120.0, "area_total": 48.92, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444409981169", "preco_m2": 5478.33}, {"id": "8787709148635", "cidade": "BLUMENAU", "bairro": "PROGRESSO", "endereco": "RUA JOAO DEOLA, N. 150, Apto 201, BL 15, VAGA 199", "tipo": "Apartamento", "preco": 150014.6, "avaliacao": 245000.0, "desconto": 38.77, "economia": 94985.4, "area_terreno": 0.0, "area_total": 54.1, "quartos": 2, "modalidade": "Venda Direta Online", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787709148635", "preco_m2": 2772.91}, {"id": "1444401020773", "cidade": "BLUMENAU", "bairro": "RIBEIRAO FRESCO", "endereco": "RUA MOACYR NIEGER SEGURADO, N. 111, Apto 303,", "tipo": "Apartamento", "preco": 242179.43, "avaliacao": 380000.0, "desconto": 36.27, "economia": 137820.57, "area_terreno": 0.0, "area_total": null, "quartos": 0, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444401020773", "preco_m2": null}, {"id": "8787706409667", "cidade": "BLUMENAU", "bairro": "PROGRESSO", "endereco": "RUA JOAO DEOLA, N. 150, Apto 404, BL 12 PAV 04 VG 169", "tipo": "Apartamento", "preco": 175000.0, "avaliacao": 175000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 59.2, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787706409667", "preco_m2": 2956.08}, {"id": "8787707700110", "cidade": "BLUMENAU", "bairro": "PROGRESSO", "endereco": "RUA JOAO DEOLA, N. 150, Apto 302, BL 11, 3º PAV, VAGA GARAGEM Nº 146", "tipo": "Apartamento", "preco": 155000.0, "avaliacao": 155000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 75.59, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787707700110", "preco_m2": 2050.54}, {"id": "8555523122260", "cidade": "BLUMENAU", "bairro": "RIBEIRAO FRESCO", "endereco": "RUA PASTOR OSWALD HESSE, N. 730, Apto 122, BL 02", "tipo": "Apartamento", "preco": 263000.0, "avaliacao": 263000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8555523122260", "preco_m2": null}, {"id": "8787710575177", "cidade": "BLUMENAU", "bairro": "SALTO DO NORTE", "endereco": "RUA ELSBETH FEDDERSEN, N. 565, Apto 705, BL 01", "tipo": "Apartamento", "preco": 250000.0, "avaliacao": 250000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 63.93, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787710575177", "preco_m2": 3910.53}, {"id": "1555521709886", "cidade": "BLUMENAU", "bairro": "ESCOLA AGRICOLA", "endereco": "RUA JOSE DEEKE, N. 691,", "tipo": "Casa", "preco": 850000.0, "avaliacao": 850000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 409.31, "area_total": 223.08, "quartos": 3, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1555521709886", "preco_m2": 3810.29}, {"id": "1555525723727", "cidade": "BOM JESUS DO OESTE", "bairro": "CENTRO", "endereco": "RUA PADRE DARCI ESQUINA COMA RUA IRMÃO AMBRÓSIO, N. 235,", "tipo": "Casa", "preco": 795000.0, "avaliacao": 795000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 400.0, "area_total": null, "quartos": 3, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1555525723727", "preco_m2": null}, {"id": "8444421151634", "cidade": "BRUSQUE", "bairro": "LIMEIRA BAIXA", "endereco": "RUA ESTRELA GUIA, N. 94, CS 01", "tipo": "Casa", "preco": 183691.35, "avaliacao": 300000.0, "desconto": 38.77, "economia": 116308.65, "area_terreno": 97.02, "area_total": 66.14, "quartos": 2, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444421151634", "preco_m2": 2777.31}, {"id": "1444402788306", "cidade": "BRUSQUE", "bairro": "BATEAS", "endereco": "RUA JOSE JACOB BRICK, N. 210, LOTE 04 DA QUADRA 08", "tipo": "Terreno", "preco": 493472.59, "avaliacao": 800000.0, "desconto": 38.32, "economia": 306527.41, "area_terreno": 450.0, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444402788306", "preco_m2": null}, {"id": "1444415815684", "cidade": "BRUSQUE", "bairro": "CENTRO I", "endereco": "PRACA BARAO DE SCHNEEBURG, N. 39, Apto 102,", "tipo": "Apartamento", "preco": 510488.75, "avaliacao": 801000.0, "desconto": 36.27, "economia": 290511.25, "area_terreno": 0.0, "area_total": 156.86, "quartos": 0, "modalidade": "Venda Direta Online", "financiamento": "Sim", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444415815684", "preco_m2": 3254.42}, {"id": "8444426876491", "cidade": "BRUSQUE", "bairro": "SAO PEDRO", "endereco": "RUA FLORIANO FISCHER, N. 344, Apto 102,", "tipo": "Apartamento", "preco": 170067.09, "avaliacao": 228000.0, "desconto": 25.41, "economia": 57932.91, "area_terreno": 0.0, "area_total": 55.73, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444426876491", "preco_m2": 3051.63}, {"id": "8555525092989", "cidade": "BRUSQUE", "bairro": "GUARANI", "endereco": "RUA GUILHERMINA REGINA DEICHMANN, N. 200, Apto 614, BL 02", "tipo": "Apartamento", "preco": 260000.0, "avaliacao": 260000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 53.79, "quartos": 1, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8555525092989", "preco_m2": 4833.61}, {"id": "1555511556106", "cidade": "CAMBORIU", "bairro": "LIDIA DUARTE", "endereco": "RUA DO EMPREENDEDOR, N. 555, CS 03", "tipo": "Casa", "preco": 293164.58, "avaliacao": 460000.0, "desconto": 36.27, "economia": 166835.41999999998, "area_terreno": 127.08, "area_total": 127.08, "quartos": 2, "modalidade": "Venda Direta Online", "financiamento": "Sim", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1555511556106", "preco_m2": 2306.93}, {"id": "8444414299966", "cidade": "CANOINHAS", "bairro": "CAMPO DA AGUA VERDE", "endereco": "RUA JOAQUIM VIEIRA DE LIMA, N. 1217, CASA 01, LT 23, QD 1310", "tipo": "Casa", "preco": 175000.0, "avaliacao": 175000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 240.75, "area_total": 58.14, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444414299966", "preco_m2": 3009.98}, {"id": "1444403096319", "cidade": "CAPIVARI DE BAIXO", "bairro": "CENTRO", "endereco": "RUA ENGENHEIRO ISMAEL COELHO DE SOUZA, N. 112, LT 12 QD B", "tipo": "Casa", "preco": 263759.33, "avaliacao": 294466.06, "desconto": 10.43, "economia": 30706.72999999998, "area_terreno": 727.4, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444403096319", "preco_m2": null}, {"id": "8787706939313", "cidade": "CHAPECO", "bairro": "SANTO ANTONIO", "endereco": "RUA IVETE MARIA CUNICO, N. 197-D, Apto 404, BL E VAGA E404", "tipo": "Apartamento", "preco": 152230.42, "avaliacao": 214750.0, "desconto": 29.12, "economia": 62519.57999999999, "area_terreno": 0.0, "area_total": 67.64, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787706939313", "preco_m2": 2250.6}, {"id": "8787707002587", "cidade": "CHAPECO", "bairro": "PINHEIRINHO", "endereco": "RUA MARECHAL CANDIDO RONDON, N. 1599-E, Apto 204, BL 02 BOX 204", "tipo": "Apartamento", "preco": 273000.0, "avaliacao": 273000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": null, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787707002587", "preco_m2": null}, {"id": "1444424075671", "cidade": "CONCORDIA", "bairro": "CENTRO", "endereco": "RUA 29 DE JULHO, N. 260, Apto 31,", "tipo": "Apartamento", "preco": 336000.0, "avaliacao": 560000.0, "desconto": 40.0, "economia": 224000.0, "area_terreno": 0.0, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444424075671", "preco_m2": null}, {"id": "8787710038031", "cidade": "CRICIUMA", "bairro": "MINA DO MATO", "endereco": "RUA OCTAVIO DE LUCCA, N. 445, Apto 103, BL 06 - B", "tipo": "Apartamento", "preco": 131400.0, "avaliacao": 219000.0, "desconto": 40.0, "economia": 87600.0, "area_terreno": 0.0, "area_total": 63.33, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787710038031", "preco_m2": 2074.85}, {"id": "1444416999428", "cidade": "CRICIUMA", "bairro": "LARANJINHA", "endereco": "RUA CAETANO RONCHI, N. SN,  LT 08", "tipo": "Casa", "preco": 290000.0, "avaliacao": 290000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 394.5, "area_total": 55.02, "quartos": 3, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444416999428", "preco_m2": 5270.81}, {"id": "1555517895590", "cidade": "CRICIUMA", "bairro": "LARANJINHA", "endereco": "RUA ANTONIO SERAFIM, N. 768, AREA 2", "tipo": "Casa", "preco": 250000.0, "avaliacao": 250000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 443.16, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1555517895590", "preco_m2": null}, {"id": "8555530584568", "cidade": "CRICIUMA", "bairro": "ARGENTINA", "endereco": "RUA DAS ORQUIDEAS, N. 380, Apto 404, BL 01", "tipo": "Apartamento", "preco": 180000.0, "avaliacao": 180000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 55.47, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8555530584568", "preco_m2": 3245.0}, {"id": "8787708880413", "cidade": "CRICIUMA", "bairro": "BRASILIA", "endereco": "RUA SALVADOR, N. 255, Apto 103, BL 04", "tipo": "Apartamento", "preco": 185100.0, "avaliacao": 185100.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 63.41, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787708880413", "preco_m2": 2919.1}, {"id": "8787706438837", "cidade": "CRICIUMA", "bairro": "SAO DEFENDE", "endereco": "RUA AFONSO MILANESE, N. 0, Apto 404, BL 15", "tipo": "Apartamento", "preco": 195000.0, "avaliacao": 195000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 47.65, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787706438837", "preco_m2": 4092.34}, {"id": "8787704174441", "cidade": "CRICIUMA", "bairro": "MINA UNIAO", "endereco": "RUA LIBANO JOSE GOMES, N. 885, Apto 104, BL 05", "tipo": "Apartamento", "preco": 195000.0, "avaliacao": 195000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787704174441", "preco_m2": null}, {"id": "8444427792933", "cidade": "CRICIUMA", "bairro": "POCO UM", "endereco": "RUA EDSON HEREDITARIO COLOMBO, N. SN, LT 01", "tipo": "Terreno", "preco": 191631.91, "avaliacao": 131901.38, "desconto": 0.0, "economia": -59730.53, "area_terreno": 450.0, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444427792933", "preco_m2": null}, {"id": "8444425938515", "cidade": "CRICIUMA", "bairro": "VILA FLORESTA II", "endereco": "RUA IRENE BURIGO COSTA, N. 0, L17, Q H", "tipo": "Terreno", "preco": 176102.55, "avaliacao": 113539.33, "desconto": 0.0, "economia": -62563.21999999999, "area_terreno": 360.0, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444425938515", "preco_m2": null}, {"id": "1444418997198", "cidade": "CRICIUMA", "bairro": "VILA FLORESTA II", "endereco": "RUA CLAUDENIR ANTONIO BONIFACIO, N. SN, LT 15, QD D", "tipo": "Terreno", "preco": 234995.45, "avaliacao": 120000.0, "desconto": 0.0, "economia": -114995.45000000001, "area_terreno": 360.0, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444418997198", "preco_m2": null}, {"id": "8444402334443", "cidade": "CURITIBANOS", "bairro": "GETULIO VARGAS", "endereco": "RUA  AURACELIA ANDRADE LEMOS, N. 723, LT 17 QD 06A", "tipo": "Casa", "preco": 123904.77, "avaliacao": 205000.0, "desconto": 39.56, "economia": 81095.23, "area_terreno": 300.0, "area_total": 61.13, "quartos": 1, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444402334443", "preco_m2": 2026.91}, {"id": "1555517657664", "cidade": "CURITIBANOS", "bairro": "Centro", "endereco": "RUA MIGUEL DRISSEN, N. 10, LT 06 QD 08", "tipo": "Casa", "preco": 828508.59, "avaliacao": 1300000.0, "desconto": 36.27, "economia": 471491.41000000003, "area_terreno": 372.0, "area_total": null, "quartos": 0, "modalidade": "Venda Online", "financiamento": "Sim", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1555517657664", "preco_m2": null}, {"id": "1555531145306", "cidade": "FLORIANOPOLIS", "bairro": "BARRA DA LAGOA", "endereco": "RUA CLARA SIMOES SPECK, N. 163, LT 03 QD F", "tipo": "Casa", "preco": 1274628.6, "avaliacao": 2000000.0, "desconto": 36.27, "economia": 725371.3999999999, "area_terreno": 450.0, "area_total": 274.56, "quartos": 5, "modalidade": "Licitação Aberta", "financiamento": "Sim", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1555531145306", "preco_m2": 4642.44}, {"id": "1444408542864", "cidade": "FLORIANOPOLIS", "bairro": "CAMPECHE", "endereco": "RUA CAMARINHAS, N. 112, QD D, LT 19", "tipo": "Casa", "preco": 800000.0, "avaliacao": 800000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 187.4, "area_total": 127.66, "quartos": 3, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444408542864", "preco_m2": 6266.65}, {"id": "10208954", "cidade": "GUARAMIRIM", "bairro": "CORTICEIRA", "endereco": "RUA GUILHERME RIBEIRO, N. 61, QD 01, LT 03", "tipo": "Casa", "preco": 722186.32, "avaliacao": 1245000.0, "desconto": 42.0, "economia": 522813.68000000005, "area_terreno": 426.4, "area_total": null, "quartos": 0, "modalidade": "Venda Direta Online", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=10208954", "preco_m2": null}, {"id": "8787721898053", "cidade": "ICARA", "bairro": "CRISTO REI", "endereco": "RUA ANTONIO TASSI, N. SN, Apto 21, BL 09 BOX 226", "tipo": "Apartamento", "preco": 164686.3, "avaliacao": 186000.0, "desconto": 11.46, "economia": 21313.70000000001, "area_terreno": 0.0, "area_total": 53.21, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787721898053", "preco_m2": 3095.03}, {"id": "10206997", "cidade": "IMARUI", "bairro": "Centro", "endereco": "ESTRADA GERAL RIO DUNA, N. SN, AGUAS MORNAS", "tipo": "Terreno", "preco": 985153.6, "avaliacao": 1654790.54, "desconto": 40.47, "economia": 669636.9400000001, "area_terreno": 715100.0, "area_total": null, "quartos": 0, "modalidade": "Venda Direta Online", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=10206997", "preco_m2": null}, {"id": "8787702567187", "cidade": "INDAIAL", "bairro": "RIBEIRAO DAS PEDRAS", "endereco": "RUA MARECHAL DEODORO DA FONSECA, N. 3131, Apto 17, BL C", "tipo": "Apartamento", "preco": 218000.0, "avaliacao": 218000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 60.94, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787702567187", "preco_m2": 3577.29}, {"id": "8444421467097", "cidade": "INDAIAL", "bairro": "ESTRADA DAS AREIAS", "endereco": "RUA RUDIMAR NARDELLI, N. 234, CS 01", "tipo": "Casa", "preco": 250000.0, "avaliacao": 250000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 223.0, "area_total": 57.0, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444421467097", "preco_m2": 4385.96}, {"id": "8444432468472", "cidade": "INDAIAL", "bairro": "RIBEIRAO DAS PEDRAS", "endereco": "RUA A DO LOTEAMENTO VALE J, N. 376, CS A", "tipo": "Casa", "preco": 250360.0, "avaliacao": 235000.0, "desconto": 0.0, "economia": -15360.0, "area_terreno": 180.0, "area_total": 36.63, "quartos": 1, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444432468472", "preco_m2": 6834.83}, {"id": "8555517751308", "cidade": "IPUMIRIM", "bairro": "CENTRO", "endereco": "RUA JOSE ERMELINDO ZWIRTES, N. 48, QD F LT 17", "tipo": "Casa", "preco": 250000.0, "avaliacao": 250000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 300.0, "area_total": 69.97, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8555517751308", "preco_m2": 3572.96}, {"id": "8787700508124", "cidade": "ITAJAI", "bairro": "ITAIPAVA", "endereco": "AVENIDA ITAIPAVA, N. 3300, Apto 202, BL 04", "tipo": "Apartamento", "preco": 145200.0, "avaliacao": 242000.0, "desconto": 40.0, "economia": 96800.0, "area_terreno": 0.0, "area_total": 54.03, "quartos": 1, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787700508124", "preco_m2": 2687.4}, {"id": "8444411252233", "cidade": "ITAJAI", "bairro": "SANTA REGINA", "endereco": "RUA JOSE SASDELLI, N. 1127, Apto 101,", "tipo": "Apartamento", "preco": 165322.22, "avaliacao": 270000.0, "desconto": 38.77, "economia": 104677.78, "area_terreno": 0.0, "area_total": 57.69, "quartos": 2, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444411252233", "preco_m2": 2865.7}, {"id": "10274382", "cidade": "ITAJAI", "bairro": "BARRA DO RIO", "endereco": "RUA LUIZ JOSE BENTO DA SILVA, N. 167", "tipo": "Casa", "preco": 695182.44, "avaliacao": 1090800.0, "desconto": 36.27, "economia": 395617.56000000006, "area_terreno": 384.9, "area_total": null, "quartos": 0, "modalidade": "Venda Direta Online", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=10274382", "preco_m2": null}, {"id": "1444423649577", "cidade": "ITAJAI", "bairro": "CANHANDUBA", "endereco": "RUA ALVARO BERALDI, N. 460, Apto 1206, TR 02", "tipo": "Apartamento", "preco": 355000.0, "avaliacao": 355000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 56.83, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444423649577", "preco_m2": 6246.7}, {"id": "8555521002632", "cidade": "ITAJAI", "bairro": "CANHANDUBA", "endereco": "RUA ALVARO BERALDI, N. 400, Apto 302, BL 7", "tipo": "Apartamento", "preco": 310000.0, "avaliacao": 310000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 61.0, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8555521002632", "preco_m2": 5081.97}, {"id": "1444400104060", "cidade": "ITAPEMA", "bairro": "MORRETES", "endereco": "RUA 436, N. 660, CS 01", "tipo": "Casa", "preco": 385000.0, "avaliacao": 385000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 126.0, "area_total": 57.34, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444400104060", "preco_m2": 6714.34}, {"id": "1444418370080", "cidade": "ITAPOA", "bairro": "BARRA DO SAI", "endereco": "RUA CRISTOVAO COLOMBO, N. SN, LT 13 QD 100", "tipo": "Terreno", "preco": 141000.0, "avaliacao": 235000.0, "desconto": 40.0, "economia": 94000.0, "area_terreno": 360.0, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444418370080", "preco_m2": null}, {"id": "1444419844310", "cidade": "ITAPOA", "bairro": "BARRA DO SAI", "endereco": "AVENIDA DOM HENRIQUE II, N. 3306, Apto 04, VG 03 LT 06 QD 12", "tipo": "Apartamento", "preco": 520000.0, "avaliacao": 520000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 92.96, "quartos": 3, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444419844310", "preco_m2": 5593.8}, {"id": "1444418401155", "cidade": "ITUPORANGA", "bairro": "CERRO NEGRO", "endereco": "RODOVIA SC 350, N. SN, AREA 13", "tipo": "Terreno", "preco": 220000.0, "avaliacao": 220000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 800.22, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444418401155", "preco_m2": null}, {"id": "8444414062613", "cidade": "JARAGUA DO SUL", "bairro": "TRES RIOS DO NORTE", "endereco": "RUA 1304 JOSE FOSSILE FILHO, N. 111, LT 01", "tipo": "Casa", "preco": 195583.2, "avaliacao": 325972.0, "desconto": 40.0, "economia": 130388.79999999999, "area_terreno": 416.95, "area_total": 44.38, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444414062613", "preco_m2": 4407.01}, {"id": "8041700020056", "cidade": "JARAGUA DO SUL", "bairro": "JARAGUA 84", "endereco": "RUA SILVINO LESKOWICZ, N. 641,", "tipo": "Casa", "preco": 228000.0, "avaliacao": 380000.0, "desconto": 40.0, "economia": 152000.0, "area_terreno": 308.0, "area_total": 65.0, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8041700020056", "preco_m2": 3507.69}, {"id": "8444428909036", "cidade": "JARAGUA DO SUL", "bairro": "JOAO PESSOA", "endereco": "RUA 664 ARTHUR GONCALVES DE ARAUJO, N. 500, Apto 205, PAV 02 VG 205", "tipo": "Apartamento", "preco": 210000.0, "avaliacao": 210000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 48.47, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444428909036", "preco_m2": 4332.58}, {"id": "8444432564390", "cidade": "JARAGUA DO SUL", "bairro": "RIBEIRAO CAVALO", "endereco": "RUA PAULO VOLTOLINI, N. 100, Apto 355, BL 05 PAV 03 VG 172", "tipo": "Apartamento", "preco": 145000.0, "avaliacao": 145000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 49.51, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444432564390", "preco_m2": 2928.7}, {"id": "8444418204145", "cidade": "JARAGUA DO SUL", "bairro": "RIO CERRO II", "endereco": "RUA ALBERTO UTPADEL, N. 43, LT 05", "tipo": "Casa", "preco": 290000.0, "avaliacao": 274000.0, "desconto": 0.0, "economia": -16000.0, "area_terreno": 300.0, "area_total": 40.81, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Sim", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444418204145", "preco_m2": 7106.1}, {"id": "8444420007645", "cidade": "JARDINOPOLIS", "bairro": "CENTRO", "endereco": "RUA SANTA CATARINA, N. 156, LT 03 QD 41", "tipo": "Casa", "preco": 26140.98, "avaliacao": 45000.0, "desconto": 41.91, "economia": 18859.02, "area_terreno": 375.0, "area_total": 50.09, "quartos": 2, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444420007645", "preco_m2": 521.88}, {"id": "8787712929669", "cidade": "JOINVILLE", "bairro": "PARQUE GUARANI", "endereco": "RUA BOEHMERWALD, N. 2153, Apto 408, TORRE 03", "tipo": "Apartamento", "preco": 100291.53, "avaliacao": 169241.39, "desconto": 40.75, "economia": 68949.86000000002, "area_terreno": 0.0, "area_total": 49.77, "quartos": 2, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787712929669", "preco_m2": 2015.1}, {"id": "8787713159018", "cidade": "JOINVILLE", "bairro": "PARQUE GUARANI", "endereco": "RUA BOEHMERWALD, N. 2153, Apto 402, TORRE 04", "tipo": "Apartamento", "preco": 100741.08, "avaliacao": 170000.0, "desconto": 40.75, "economia": 69258.92, "area_terreno": 0.0, "area_total": 49.77, "quartos": 2, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787713159018", "preco_m2": 2024.13}, {"id": "8787717694120", "cidade": "JOINVILLE", "bairro": "ITAUM", "endereco": "RUA JOAO DA COSTA JUNIOR, N. 852, Apto 202, BL 01", "tipo": "Apartamento", "preco": 129948.9, "avaliacao": 215000.0, "desconto": 39.56, "economia": 85051.1, "area_terreno": 0.0, "area_total": 67.35, "quartos": 2, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787717694120", "preco_m2": 1929.46}, {"id": "8787706271355", "cidade": "JOINVILLE", "bairro": "AVENTUREIRO", "endereco": "RUA ADOLFO RIBEIRO PADILHA, N. 167, Apto 303, TORRE 01V", "tipo": "Apartamento", "preco": 133273.18, "avaliacao": 220500.0, "desconto": 39.56, "economia": 87226.82, "area_terreno": 0.0, "area_total": 62.23, "quartos": 2, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787706271355", "preco_m2": 2141.62}, {"id": "8555521975380", "cidade": "JOINVILLE", "bairro": "JOAO COSTA", "endereco": "RUA MANUEL AGOSTINHO DE CARVALHO, N. 350, Apto 303, BL 03 VG 387", "tipo": "Apartamento", "preco": 120882.7, "avaliacao": 200000.0, "desconto": 39.56, "economia": 79117.3, "area_terreno": 0.0, "area_total": null, "quartos": 2, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8555521975380", "preco_m2": null}, {"id": "8787704019217", "cidade": "JOINVILLE", "bairro": "ADHEMAR GARCIA", "endereco": "RUA ANTONIO JOSE DA COSTA, N. 374, Apto 103, BL 07", "tipo": "Apartamento", "preco": 114234.15, "avaliacao": 189000.0, "desconto": 39.56, "economia": 74765.85, "area_terreno": 0.0, "area_total": null, "quartos": 0, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787704019217", "preco_m2": null}, {"id": "8555533233286", "cidade": "JOINVILLE", "bairro": "PARANAGUAMIRIM", "endereco": "AVENIDA AULO ABRAÃO FRANCISCO, N. SN, Apto 203, BLOCO 4", "tipo": "Apartamento", "preco": 123904.77, "avaliacao": 205000.0, "desconto": 39.56, "economia": 81095.23, "area_terreno": 0.0, "area_total": 50.34, "quartos": 2, "modalidade": "Venda Direta Online", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8555533233286", "preco_m2": 2461.36}, {"id": "8787712502240", "cidade": "JOINVILLE", "bairro": "PARQUE GUARANI", "endereco": "RUA BOEHMERWALD, N. 2153, Apto 502, TR 04 PAV 05 VG 130", "tipo": "Apartamento", "preco": 126926.84, "avaliacao": 210000.0, "desconto": 39.56, "economia": 83073.16, "area_terreno": 0.0, "area_total": 49.77, "quartos": 2, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787712502240", "preco_m2": 2550.27}, {"id": "8787714345613", "cidade": "JOINVILLE", "bairro": "PIRABEIRABA (PIRABEIRABA)", "endereco": "RUA ALFREDO SCHULZE, N. SN, Apto 401, PAV 04 TR 01 VG 69", "tipo": "Apartamento", "preco": 153076.13, "avaliacao": 250000.0, "desconto": 38.77, "economia": 96923.87, "area_terreno": 0.0, "area_total": 53.26, "quartos": 2, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787714345613", "preco_m2": 2874.13}, {"id": "8787717209842", "cidade": "JOINVILLE", "bairro": "FLORESTA", "endereco": "RUA AQUINO MANOEL QUINTINO, N. 536, Apto 707, TORRE 05", "tipo": "Apartamento", "preco": 170220.65, "avaliacao": 278000.0, "desconto": 38.77, "economia": 107779.35, "area_terreno": 0.0, "area_total": 80.56, "quartos": 2, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787717209842", "preco_m2": 2112.97}, {"id": "8444415292990", "cidade": "JOINVILLE", "bairro": "ADHEMAR GARCIA", "endereco": "RUA WALDEMAR EGGERS, N. 59, CS 01", "tipo": "Casa", "preco": 154913.04, "avaliacao": 253000.0, "desconto": 38.77, "economia": 98086.95999999999, "area_terreno": 62.39, "area_total": null, "quartos": 0, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444415292990", "preco_m2": null}, {"id": "8444416710221", "cidade": "JOINVILLE", "bairro": "ADHEMAR GARCIA", "endereco": "RUA JOAO TOMAS DA SILVA, N. 228, Apto 401, VG 01", "tipo": "Apartamento", "preco": 167159.13, "avaliacao": 273000.0, "desconto": 38.77, "economia": 105840.87, "area_terreno": 0.0, "area_total": 60.67, "quartos": 2, "modalidade": "Venda Online", "financiamento": "Sim", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444416710221", "preco_m2": 2755.22}, {"id": "8444422100472", "cidade": "JOINVILLE", "bairro": "AVENTUREIRO", "endereco": "RUA TUIUTI, N. 3210, Apto 106, BL 05 BOX 189", "tipo": "Apartamento", "preco": 135326.01, "avaliacao": 215000.0, "desconto": 37.06, "economia": 79673.98999999999, "area_terreno": 0.0, "area_total": null, "quartos": 0, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444422100472", "preco_m2": null}, {"id": "1444412465070", "cidade": "JOINVILLE", "bairro": "COSTA E SILVA", "endereco": "RUA FREDERICO BIBOW JUNIOR, N. 90,", "tipo": "Casa", "preco": 656433.73, "avaliacao": 1030000.0, "desconto": 36.27, "economia": 373566.27, "area_terreno": 686.91, "area_total": 301.33, "quartos": 3, "modalidade": "Licitação Aberta", "financiamento": "Sim", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444412465070", "preco_m2": 2178.45}, {"id": "1787702267797", "cidade": "JOINVILLE", "bairro": "COSTA E SILVA", "endereco": "RUA GARCA BRANCA, N. 340, Apto 1004, TORRE 01", "tipo": "Apartamento", "preco": 222931.9, "avaliacao": 349799.0, "desconto": 36.27, "economia": 126867.1, "area_terreno": 0.0, "area_total": 90.02, "quartos": 2, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1787702267797", "preco_m2": 2476.47}, {"id": "8444424107970", "cidade": "JOINVILLE", "bairro": "NOVA BRASILIA", "endereco": "RUA FELICIDADE, N. 243, UN 05", "tipo": "Casa", "preco": 321000.0, "avaliacao": 321000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 93.89, "area_total": 62.4, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444424107970", "preco_m2": 5144.23}, {"id": "1444413166816", "cidade": "JOINVILLE", "bairro": "PIRABEIRABA (PIRABEIRABA)", "endereco": "RUA RUBEN EBERHARDT, N. 83, CS 01", "tipo": "Casa", "preco": 780000.0, "avaliacao": 780000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 180.0, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444413166816", "preco_m2": null}, {"id": "1444416800893", "cidade": "JOINVILLE", "bairro": "VILA NOVA", "endereco": "RUA MARCIO LUCKOW, N. 736, CS GEMINADA 01", "tipo": "Casa", "preco": 366160.04, "avaliacao": 366160.04, "desconto": 0.0, "economia": 0.0, "area_terreno": 88.59, "area_total": 73.78, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444416800893", "preco_m2": 4962.86}, {"id": "8444403281440", "cidade": "JOINVILLE", "bairro": "VILA NOVA", "endereco": "RUA JULIO STOLF, N. 15798, Apto 405, BL B VG 83", "tipo": "Apartamento", "preco": 230000.0, "avaliacao": 230000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 61.64, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444403281440", "preco_m2": 3731.34}, {"id": "8555540254579", "cidade": "JOINVILLE", "bairro": "VILA NOVA", "endereco": "RUA JULIO STOLF, N. SN, Apto 605, BL B", "tipo": "Apartamento", "preco": 235000.0, "avaliacao": 235000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 61.65, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8555540254579", "preco_m2": 3811.84}, {"id": "1787701484930", "cidade": "JOINVILLE", "bairro": "COSTA E SILVA", "endereco": "RUA GARCA BRANCA, N. 340, Apto 603, TR 01, VG 94", "tipo": "Apartamento", "preco": 365000.0, "avaliacao": 365000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 90.02, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1787701484930", "preco_m2": 4054.65}, {"id": "8444404983066", "cidade": "JOINVILLE", "bairro": "AVENTUREIRO", "endereco": "RUA HABIB FARAH, N. 138, Apto 101, VG 01", "tipo": "Apartamento", "preco": 290000.0, "avaliacao": 290000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 57.89, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444404983066", "preco_m2": 5009.5}, {"id": "8444424885850", "cidade": "JOINVILLE", "bairro": "FATIMA", "endereco": "RUA LIRIOS, N. 188, CS 04", "tipo": "Casa", "preco": 485000.0, "avaliacao": 485000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 129.5, "area_total": 76.86, "quartos": 3, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444424885850", "preco_m2": 6310.17}, {"id": "8444424562465", "cidade": "JOINVILLE", "bairro": "PETROPOLIS", "endereco": "RUA ALFREDO WAGNER, N. 590, UNIDADE 03", "tipo": "Casa", "preco": 280000.0, "avaliacao": 280000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 89.6, "area_total": 67.35, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444424562465", "preco_m2": 4157.39}, {"id": "8555539317864", "cidade": "JOINVILLE", "bairro": "ADHEMAR GARCIA", "endereco": "RUA ANTONIO JOSE DA COSTA, N. 340, Apto 204, BL 14", "tipo": "Apartamento", "preco": 206000.0, "avaliacao": 206000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 51.56, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8555539317864", "preco_m2": 3995.35}, {"id": "8787708693265", "cidade": "JOINVILLE", "bairro": "ADHEMAR GARCIA", "endereco": "RUA JARIVATUBA, N. 2120, Apto 101, BL 03, VG 56", "tipo": "Apartamento", "preco": 220000.0, "avaliacao": 220000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 84.23, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787708693265", "preco_m2": 2611.9}, {"id": "8787705947002", "cidade": "JOINVILLE", "bairro": "PARANAGUAMIRIM", "endereco": "RUA BOEHMERWALD, N. 123, Apto 201, BL 02", "tipo": "Apartamento", "preco": 230000.0, "avaliacao": 230000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787705947002", "preco_m2": null}, {"id": "8787714936441", "cidade": "JOINVILLE", "bairro": "PARQUE GUARANI", "endereco": "RUA BOEHMERWALD, N. 2153, Apto 404, TR 04, VG 134", "tipo": "Apartamento", "preco": 245000.0, "avaliacao": 245000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 49.76, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787714936441", "preco_m2": 4923.63}, {"id": "8787700302453", "cidade": "JOINVILLE", "bairro": "FLORESTA", "endereco": "RUA PRINCESA MAFALDA, N. 474, Apto 101, BL 09 VG 296", "tipo": "Apartamento", "preco": 194440.0, "avaliacao": 183000.0, "desconto": 0.0, "economia": -11440.0, "area_terreno": 0.0, "area_total": 73.51, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787700302453", "preco_m2": 2645.08}, {"id": "8444430408952", "cidade": "JOINVILLE", "bairro": "COSTA E SILVA", "endereco": "RUA COMANDANTE TELLES DE MENDONCA, N. SN, Apto 202, BL 06", "tipo": "Apartamento", "preco": 252398.3, "avaliacao": 235000.0, "desconto": 0.0, "economia": -17398.29999999999, "area_terreno": 0.0, "area_total": 62.63, "quartos": 3, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444430408952", "preco_m2": 4029.99}, {"id": "8787715545853", "cidade": "JOINVILLE", "bairro": "PARQUE GUARANI", "endereco": "RUA BOEHMERWALD, N. 2153, Apto 501, TORRE 05 VG 139", "tipo": "Apartamento", "preco": 217302.53, "avaliacao": 200000.0, "desconto": 0.0, "economia": -17302.53, "area_terreno": 0.0, "area_total": 49.77, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787715545853", "preco_m2": 4366.13}, {"id": "1444415473163", "cidade": "JOINVILLE", "bairro": "SANTO ANTONIO", "endereco": "RUA ALEXANDRE HUMBOLD, N. 125, Apto 603, 5 PAVIMENTO VG 14 E 15", "tipo": "Apartamento", "preco": 899600.0, "avaliacao": 822000.0, "desconto": 0.0, "economia": -77600.0, "area_terreno": 0.0, "area_total": 201.32, "quartos": 3, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444415473163", "preco_m2": 4468.51}, {"id": "1444415924149", "cidade": "JOINVILLE", "bairro": "SAGUACU", "endereco": "RUA PIRATUBA, N. 477,", "tipo": "Casa", "preco": 695618.57, "avaliacao": 630000.0, "desconto": 0.0, "economia": -65618.56999999995, "area_terreno": 570.0, "area_total": 174.5, "quartos": 3, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444415924149", "preco_m2": 3986.35}, {"id": "8787714403320", "cidade": "JOINVILLE", "bairro": "JOAO COSTA", "endereco": "RUA JOAO DA COSTA JUNIOR, N. 0, Apto 203, BL 02, VAGA DE GARAGEM Nº 17", "tipo": "Apartamento", "preco": 212759.05, "avaliacao": 190000.0, "desconto": 0.0, "economia": -22759.04999999999, "area_terreno": 0.0, "area_total": 48.59, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787714403320", "preco_m2": 4378.66}, {"id": "1787701141404", "cidade": "JOINVILLE", "bairro": "JOAO COSTA", "endereco": "RUA ISRAEL, N. 68, Apto 101, BL 15 VG 225", "tipo": "Apartamento", "preco": 259200.0, "avaliacao": 205000.0, "desconto": 0.0, "economia": -54200.0, "area_terreno": 0.0, "area_total": 76.72, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1787701141404", "preco_m2": 3378.52}, {"id": "8555527320660", "cidade": "JOINVILLE", "bairro": "JOAO COSTA", "endereco": "RUA NILSON JOAO RAULINO, N. 350, Apto 302, BL 23 VG 138", "tipo": "Apartamento", "preco": 192688.0, "avaliacao": 150000.0, "desconto": 0.0, "economia": -42688.0, "area_terreno": 0.0, "area_total": 61.52, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8555527320660", "preco_m2": 3132.12}, {"id": "8787716474836", "cidade": "JOINVILLE", "bairro": "FLORESTA", "endereco": "RUA AQUINO MANOEL QUINTINO, N. 536, Apto 208, TR 07, VG 232", "tipo": "Apartamento", "preco": 245890.0, "avaliacao": 189000.0, "desconto": 0.0, "economia": -56890.0, "area_terreno": 0.0, "area_total": 68.56, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787716474836", "preco_m2": 3586.49}, {"id": "8313000000579", "cidade": "JOINVILLE", "bairro": "ITAUM", "endereco": "RUA HAITI, N. 360, LT 11", "tipo": "Casa", "preco": 553335.0, "avaliacao": 390000.0, "desconto": 0.0, "economia": -163335.0, "area_terreno": 360.0, "area_total": 213.87, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8313000000579", "preco_m2": 2587.25}, {"id": "8787715701286", "cidade": "JOINVILLE", "bairro": "FLORESTA", "endereco": "RUA AQUINO MANOEL QUINTINO, N. 536, Apto 804, TR 05, VG 321", "tipo": "Apartamento", "preco": 269013.0, "avaliacao": 189000.0, "desconto": 0.0, "economia": -80013.0, "area_terreno": 0.0, "area_total": 68.57, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787715701286", "preco_m2": 3923.19}, {"id": "8444430436670", "cidade": "LAGES", "bairro": "PROMORAR", "endereco": "RUA JOSE MARIA RIBAS PINTO, N. 610, Apto 403, BL H", "tipo": "Apartamento", "preco": 83428.47, "avaliacao": 150000.0, "desconto": 44.39, "economia": 66571.53, "area_terreno": 0.0, "area_total": 53.42, "quartos": 2, "modalidade": "Venda Online", "financiamento": "Sim", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444430436670", "preco_m2": 1561.75}, {"id": "8444400217393", "cidade": "LAGES", "bairro": "DOM DANIEL", "endereco": "RUA RIACHO IPIRANGA, N. 104, Apto 01,", "tipo": "Apartamento", "preco": 220000.0, "avaliacao": 220000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 69.96, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444400217393", "preco_m2": 3144.65}, {"id": "1444414308037", "cidade": "LAGES", "bairro": "GUADALUPE", "endereco": "RUA ANTONIO MARTINS, N. 159, QD 65 LT 1018", "tipo": "Casa", "preco": 310000.0, "avaliacao": 310000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 104.0, "area_total": 59.85, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444414308037", "preco_m2": 5179.62}, {"id": "1444418305970", "cidade": "LAURO MULLER", "bairro": "CENTRO", "endereco": "RUA DAVID BEZ FONTANA, N. SN,", "tipo": "Terreno", "preco": 101541.61, "avaliacao": 115893.2, "desconto": 12.39, "economia": 14351.589999999997, "area_terreno": 595.0, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444418305970", "preco_m2": null}, {"id": "1444419619510", "cidade": "MAFRA", "bairro": "VILA FERROVIARIA", "endereco": "RUA VICTOR CELESTINO DE OLIVEIRA, N. 246, LT 55", "tipo": "Casa", "preco": 650857.22, "avaliacao": 1075000.0, "desconto": 39.46, "economia": 424142.78, "area_terreno": 639.0, "area_total": null, "quartos": 0, "modalidade": "Venda Direta Online", "financiamento": "Sim", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444419619510", "preco_m2": null}, {"id": "1444418848397", "cidade": "MORRO DA FUMACA", "bairro": "MORRO MACCARI", "endereco": "RUA ANTONIO TEIXEIRA GOULART, N. SN, LT 23 QD F", "tipo": "Terreno", "preco": 187000.0, "avaliacao": 187000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 390.79, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444418848397", "preco_m2": null}, {"id": "8555533422607", "cidade": "MORRO DA FUMACA", "bairro": "Capelinha", "endereco": "AVENIDA CELESTE RECCO, N. 1470, Apto 304, BL 04", "tipo": "Apartamento", "preco": 198000.0, "avaliacao": 198000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 84.44, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8555533422607", "preco_m2": 2344.86}, {"id": "8444405059524", "cidade": "NOVA ERECHIM", "bairro": "Centro", "endereco": "RUA MARECHAL CANDIDO RONDON, N. 227, LT 04 QD 43", "tipo": "Casa", "preco": 154200.0, "avaliacao": 257000.0, "desconto": 40.0, "economia": 102800.0, "area_terreno": 560.0, "area_total": 99.56, "quartos": 3, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444405059524", "preco_m2": 1548.81}, {"id": "8444413307574", "cidade": "PALHOCA", "bairro": "ARIRIU DA FORMIGA", "endereco": "RUA NATALINO CAMPOS SCHAIMANN, N. 1339, Apto 401, BL D", "tipo": "Apartamento", "preco": 115339.07, "avaliacao": 220000.0, "desconto": 47.58, "economia": 104660.93, "area_terreno": 0.0, "area_total": null, "quartos": 2, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444413307574", "preco_m2": null}, {"id": "8787703178575", "cidade": "PALHOCA", "bairro": "ARIRIU", "endereco": "RUA HENRIQUE JOSE DA SILVA, N. 530, Apto 404, BL 03", "tipo": "Apartamento", "preco": 139015.11, "avaliacao": 230000.0, "desconto": 39.56, "economia": 90984.89000000001, "area_terreno": 0.0, "area_total": 53.36, "quartos": 2, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787703178575", "preco_m2": 2605.23}, {"id": "8787704973859", "cidade": "PALHOCA", "bairro": "SAO SEBASTIAO", "endereco": "RUA LUIZ ALESSIO LENHANI, N. 84, Apto 305, BL 01", "tipo": "Apartamento", "preco": 175433.75, "avaliacao": 240000.0, "desconto": 26.91, "economia": 64566.25, "area_terreno": 0.0, "area_total": 65.76, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787704973859", "preco_m2": 2667.79}, {"id": "8444401649564", "cidade": "PALHOCA", "bairro": "BARRA DO ARIRIU", "endereco": "RUA NICOLAU SEVERIANO DE FARIAS, N. 47, Apto 101,  VAGA Nº 101", "tipo": "Apartamento", "preco": 220000.0, "avaliacao": 220000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": null, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444401649564", "preco_m2": null}, {"id": "8444427938555", "cidade": "PALHOCA", "bairro": "BARRA DO ARIRIU", "endereco": "RUA ANTONIO DA BICOTA, N. 2630, Apto 347, BL 3A", "tipo": "Apartamento", "preco": 205000.0, "avaliacao": 205000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444427938555", "preco_m2": null}, {"id": "8555519258110", "cidade": "PALHOCA", "bairro": "BELA VISTA", "endereco": "AVENIDA PAULO ROBERTO VIDAL, N. 1455, CS 1082  TP B QD CK", "tipo": "Casa", "preco": 215000.0, "avaliacao": 215000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 143.0, "area_total": 60.23, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8555519258110", "preco_m2": 3569.65}, {"id": "8555523725283", "cidade": "PALHOCA", "bairro": "BELA VISTA", "endereco": "AVENIDA PAULO ROBERTO VIDAL, N. 2490, CS F64 QD F", "tipo": "Casa", "preco": 250000.0, "avaliacao": 250000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 100.0, "area_total": 52.19, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8555523725283", "preco_m2": 4790.19}, {"id": "8787706078318", "cidade": "PALHOCA", "bairro": "BELA VISTA", "endereco": "RUA SEBASTIAO ALZEMIRO DOS SANTOS, N. 387, Apto 102, BL 11", "tipo": "Apartamento", "preco": 200000.0, "avaliacao": 200000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 80.51, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787706078318", "preco_m2": 2484.16}, {"id": "8787714925695", "cidade": "PALHOCA", "bairro": "NOVA PALHOCA", "endereco": "RUA ERNESTO MEYER FILHO, N. 32, Apto 107, BL E", "tipo": "Apartamento", "preco": 290000.0, "avaliacao": 290000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787714925695", "preco_m2": null}, {"id": "8787715322510", "cidade": "PALHOCA", "bairro": "NOVA PALHOCA", "endereco": "RUA ERNESTO MEYER FILHO, N. 32, Apto 401, BL A VG 157", "tipo": "Apartamento", "preco": 270000.0, "avaliacao": 270000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 58.08, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787715322510", "preco_m2": 4648.76}, {"id": "10216482", "cidade": "RIO NEGRINHO", "bairro": "VILA NOVA", "endereco": "RUA JOSEPH STRENZEL, N. 191", "tipo": "Galpão", "preco": 664878.14, "avaliacao": 1070000.0, "desconto": 37.87, "economia": 405121.86, "area_terreno": 612.76, "area_total": null, "quartos": 0, "modalidade": "Venda Direta Online", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=10216482", "preco_m2": null}, {"id": "1444419390386", "cidade": "SALETE", "bairro": "SCHREIBER", "endereco": "RUA  AUGUSTO SCWARTZ, N. 25, Apto 11, TERREO", "tipo": "Apartamento", "preco": 138473.13, "avaliacao": 220000.0, "desconto": 37.06, "economia": 81526.87, "area_terreno": 0.0, "area_total": 56.24, "quartos": 0, "modalidade": "Venda Direta Online", "financiamento": "Sim", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444419390386", "preco_m2": 2462.18}, {"id": "1555515138422", "cidade": "SANTO AMARO DA IMPERATRIZ", "bairro": "CENTRO", "endereco": "RUA SANTANA, N. 4671,", "tipo": "Casa", "preco": 1600000.0, "avaliacao": 1600000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 2236.0, "area_total": 459.19, "quartos": 4, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1555515138422", "preco_m2": 3484.4}, {"id": "1444420491778", "cidade": "SAO BENTO DO SUL", "bairro": "RIO NEGRO", "endereco": "RUA DANIELA PATRICIA MENGARDA, N. 132, Apto 02,", "tipo": "Apartamento", "preco": 187188.41, "avaliacao": 305000.0, "desconto": 38.63, "economia": 117811.59, "area_terreno": 0.0, "area_total": 71.31, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444420491778", "preco_m2": 2625.0}, {"id": "1444419482868", "cidade": "SAO CRISTOVAO DO SUL", "bairro": "centro", "endereco": "R AFONSO FAEDO, N. SN, 0", "tipo": "Casa", "preco": 548410.3, "avaliacao": 650000.0, "desconto": 15.63, "economia": 101589.69999999995, "area_terreno": 525.0, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444419482868", "preco_m2": null}, {"id": "10215807", "cidade": "SAO FRANCISCO DO SUL", "bairro": "ROCIO PEQUENO", "endereco": "RUA JOSÉ LAERCIO THOMAZELLI, N. 00, QD 03, LT 06", "tipo": "Terreno", "preco": 172074.86, "avaliacao": 270000.0, "desconto": 36.27, "economia": 97925.14000000001, "area_terreno": 450.0, "area_total": null, "quartos": 0, "modalidade": "Venda Direta Online", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=10215807", "preco_m2": null}, {"id": "1444405740975", "cidade": "SAO FRANCISCO DO SUL", "bairro": "AGUA BRANCA", "endereco": "RUA JOAO PEREIRA DE SANT-ANNA, N. 60, CASA 06", "tipo": "Casa", "preco": 520000.0, "avaliacao": 520000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 248.4, "area_total": 111.17, "quartos": 3, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444405740975", "preco_m2": 4677.52}, {"id": "1444421408661", "cidade": "SAO FRANCISCO DO SUL", "bairro": "IPEROBA", "endereco": "RUA GUILHERME LUIS WINTER, N. SN, LT 07 VILA II", "tipo": "Casa", "preco": 1530000.0, "avaliacao": 1530000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 910.55, "area_total": 282.95, "quartos": 4, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444421408661", "preco_m2": 5407.32}, {"id": "8555535180066", "cidade": "SAO JOAO BATISTA", "bairro": "RIBANCEIRA DO SUL", "endereco": "RUA JOSÉ ANTONIO SOARES, N. SN, Apto 103, BL B QD 03", "tipo": "Apartamento", "preco": 100741.08, "avaliacao": 170000.0, "desconto": 40.75, "economia": 69258.92, "area_terreno": 0.0, "area_total": 63.54, "quartos": 2, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8555535180066", "preco_m2": 1585.47}, {"id": "8444422360717", "cidade": "SAO JOAO BATISTA", "bairro": "TAJUBA II", "endereco": "RUA LUCIA SOARES AZEVEDO, N. 50, Apto 101,", "tipo": "Apartamento", "preco": 132970.97, "avaliacao": 220000.0, "desconto": 39.56, "economia": 87029.03, "area_terreno": 0.0, "area_total": 58.63, "quartos": 2, "modalidade": "Venda Direta Online", "financiamento": "Sim", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444422360717", "preco_m2": 2267.97}, {"id": "8444429397942", "cidade": "SAO JOAO BATISTA", "bairro": "Ribanceira do Sul", "endereco": "RUA JOSÉ ANTONIO SOARES, N. 1650, Apto 401, BL E", "tipo": "Apartamento", "preco": 129948.9, "avaliacao": 215000.0, "desconto": 39.56, "economia": 85051.1, "area_terreno": 0.0, "area_total": 54.56, "quartos": 2, "modalidade": "Venda Direta Online", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444429397942", "preco_m2": 2381.76}, {"id": "1444414852829", "cidade": "SAO JOAO BATISTA", "bairro": "Tajuba I", "endereco": "RUA MARCIO ANTONIO MAZERA, N. 42, CS 09", "tipo": "Casa", "preco": 253000.0, "avaliacao": 253000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 91.54, "area_total": 61.26, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444414852829", "preco_m2": 4129.94}, {"id": "1787702466404", "cidade": "SAO JOSE", "bairro": "NOSSA SENHORA DO ROSARIO", "endereco": "AVENIDA IVO REIS MONTENEGRO, N. 262, Apto 601,", "tipo": "Apartamento", "preco": 870000.0, "avaliacao": 870000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 136.86, "quartos": 3, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1787702466404", "preco_m2": 6356.86}, {"id": "8787701597937", "cidade": "SAO JOSE", "bairro": "AREIAS", "endereco": "RUA LOURIVAL LUIZ GOMES, N. 116, Apto 302, BL 30 VG 474", "tipo": "Apartamento", "preco": 241652.02, "avaliacao": 241652.02, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 54.59, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787701597937", "preco_m2": 4426.67}, {"id": "10286325", "cidade": "SAO JOSE", "bairro": "SERRARIA", "endereco": "RUA PEDRO D. CURSIO, N. 00, LT 60", "tipo": "Terreno", "preco": 314000.0, "avaliacao": 314000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 316.8, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=10286325", "preco_m2": null}, {"id": "10286326", "cidade": "SAO JOSE", "bairro": "SERRARIA", "endereco": "RUA PEDRO D. CURSIO, N. 00, LTS 58 E 59", "tipo": "Terreno", "preco": 604900.0, "avaliacao": 604900.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 633.6, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=10286326", "preco_m2": null}, {"id": "8787707100023", "cidade": "SAO JOSE", "bairro": "SERRARIA", "endereco": "RUA WENCESLAU EVARISTO SILVA, N. 45, Apto 403, BL 08 VG 82", "tipo": "Apartamento", "preco": 240000.0, "avaliacao": 240000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 74.02, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787707100023", "preco_m2": 3242.37}, {"id": "8787708709706", "cidade": "SAO JOSE", "bairro": "SERRARIA", "endereco": "RUA PARALELA BR 101, N. KM 201, Apto 302, BL 25, VG 300", "tipo": "Apartamento", "preco": 250000.0, "avaliacao": 250000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 75.79, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787708709706", "preco_m2": 3298.59}, {"id": "1444415258750", "cidade": "SAO JOSE", "bairro": "SERTAO DO MARUIM", "endereco": "RUA MATHIAS SCHELL, N. 22, Apto 302, BL B", "tipo": "Apartamento", "preco": 235000.0, "avaliacao": 235000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 54.74, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444415258750", "preco_m2": 4293.02}, {"id": "8787715255987", "cidade": "SAO JOSE", "bairro": "SERTAO DO MARUIM", "endereco": "RUA VIDAL VICENTE ANDRADE, N. 1171, Apto 403, BL 11, VAGA N°456", "tipo": "Apartamento", "preco": 260000.0, "avaliacao": 260000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 76.62, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8787715255987", "preco_m2": 3393.37}, {"id": "1555529333907", "cidade": "SAO JOSE", "bairro": "BELA VISTA", "endereco": "AVENIDA OSVALDO JOSE DO AMARAL, N. 1001, Apto 504, BL A", "tipo": "Apartamento", "preco": 618486.64, "avaliacao": 615000.0, "desconto": 0.0, "economia": -3486.640000000014, "area_terreno": 0.0, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1555529333907", "preco_m2": null}, {"id": "1787701681050", "cidade": "SAO JOSE", "bairro": "FORQUILHAS", "endereco": "RUA VIDAL VICENTE ANDRADE, N. 1171, Apto 101, BL 23 VAGA 72", "tipo": "Apartamento", "preco": 192652.42, "avaliacao": 190500.0, "desconto": 0.0, "economia": -2152.420000000013, "area_terreno": 0.0, "area_total": 77.93, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1787701681050", "preco_m2": 2472.12}, {"id": "10286330", "cidade": "SAO JOSE", "bairro": "SERRARIA", "endereco": "RUA PEDRO D. CURSIO, N. 00, LT 61", "tipo": "Terreno", "preco": 358191.0, "avaliacao": 314000.0, "desconto": 0.0, "economia": -44191.0, "area_terreno": 316.8, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Sim", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=10286330", "preco_m2": null}, {"id": "1444421210187", "cidade": "SAO JOSE", "bairro": "FORQUILHAS", "endereco": "RUA CALENDULA, N. SN, LT 02 QD 06", "tipo": "Terreno", "preco": 335782.9, "avaliacao": 207000.0, "desconto": 0.0, "economia": -128782.90000000002, "area_terreno": 283.5, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444421210187", "preco_m2": null}, {"id": "10278241", "cidade": "SUL BRASIL", "bairro": "CENTRO", "endereco": "RUA PRESIDENTE JUSCELINO, N. S/N, QD 04, LT PARTE02", "tipo": "Terreno", "preco": 132178.89, "avaliacao": 210000.0, "desconto": 37.06, "economia": 77821.10999999999, "area_terreno": 200.0, "area_total": null, "quartos": 0, "modalidade": "Licitação Aberta", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=10278241", "preco_m2": null}, {"id": "1555522444509", "cidade": "TAIO", "bairro": "Seminário", "endereco": "RODOVIA SC 302, N. 2200, 0,", "tipo": "Casa", "preco": 1303307.74, "avaliacao": 2045000.0, "desconto": 36.27, "economia": 741692.26, "area_terreno": 6000.0, "area_total": 825.0, "quartos": 0, "modalidade": "Venda Direta Online", "financiamento": "Sim", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1555522444509", "preco_m2": 1579.77}, {"id": "8555533574067", "cidade": "TIJUCAS", "bairro": "AREIAS", "endereco": "RUA MANOEL FURTUOSO, N. 129, Apto 102, BL B VG 12", "tipo": "Apartamento", "preco": 295000.0, "avaliacao": 295000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 0.0, "area_total": 65.09, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8555533574067", "preco_m2": 4532.19}, {"id": "8444420811010", "cidade": "TIJUCAS", "bairro": "JOAIA", "endereco": "RUA AUGUSTO JOSE MORFELLE, N. 93, CS 01, LT 06 QD 8", "tipo": "Casa", "preco": 365711.84, "avaliacao": 365711.84, "desconto": 0.0, "economia": 0.0, "area_terreno": 92.25, "area_total": 53.59, "quartos": 2, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444420811010", "preco_m2": 6824.26}, {"id": "1444413761048", "cidade": "TUBARAO", "bairro": "VILA MOEMA", "endereco": "AVENIDA RODOVALHO, N. 762, Apto 401,", "tipo": "Apartamento", "preco": 1089807.45, "avaliacao": 1710000.0, "desconto": 36.27, "economia": 620192.55, "area_terreno": 0.0, "area_total": null, "quartos": 3, "modalidade": "Venda Online", "financiamento": "Sim", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444413761048", "preco_m2": null}, {"id": "1444421333220", "cidade": "URUSSANGA", "bairro": "DE VILLA", "endereco": "RUA PROJETADA A, N. SN, LT 04 QD C", "tipo": "Terreno", "preco": 210414.53, "avaliacao": 117071.0, "desconto": 0.0, "economia": -93343.53, "area_terreno": 507.65, "area_total": null, "quartos": 0, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444421333220", "preco_m2": null}, {"id": "8444401496601", "cidade": "VIDEIRA", "bairro": "CIDADE ALTA", "endereco": "RUA THEODORO TURKOT, N. 67, CS 04", "tipo": "Casa", "preco": 152955.43, "avaliacao": 240000.0, "desconto": 36.27, "economia": 87044.57, "area_terreno": 70.04, "area_total": 82.82, "quartos": 3, "modalidade": "Venda Online", "financiamento": "Sim", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444401496601", "preco_m2": 1846.84}, {"id": "8444413489575", "cidade": "VIDEIRA", "bairro": "OFICINA", "endereco": "R ANGELO ALBIERO, N. 418, CS, LT 32 QD B", "tipo": "Casa", "preco": 240000.0, "avaliacao": 240000.0, "desconto": 0.0, "economia": 0.0, "area_terreno": 490.0, "area_total": 41.07, "quartos": 1, "modalidade": "Leilão SFI - Edital Único", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444413489575", "preco_m2": 5843.68}, {"id": "1444417607230", "cidade": "XANXERE", "bairro": "SAO JORGE", "endereco": "RUA RENATO MARCANTE, N. 106, LT 45, QD D", "tipo": "Casa", "preco": 332293.44, "avaliacao": 595881.72, "desconto": 44.24, "economia": 263588.27999999997, "area_terreno": 371.0, "area_total": null, "quartos": 3, "modalidade": "Venda Direta Online", "financiamento": "Não", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=1444417607230", "preco_m2": null}, {"id": "8444417043210", "cidade": "XANXERE", "bairro": "LOT BEM MORAR II", "endereco": "RUA FLAVIO OSCAR FARDO, N. 241, LT 54 QD D", "tipo": "Casa", "preco": 417759.52, "avaliacao": 690000.0, "desconto": 39.46, "economia": 272240.48, "area_terreno": 250.66, "area_total": 158.78, "quartos": 2, "modalidade": "Venda Online", "financiamento": "Sim", "link": "https://venda-imoveis.caixa.gov.br/sistema/detalhe-imovel.asp?hdnimovel=8444417043210", "preco_m2": 2631.06}];
+
+// ── CITY COORDS (SC) ─────────────────────────────────────────────────────────
+const COORDS = {
+  'JOINVILLE':[-26.3044,-48.8487],'FLORIANOPOLIS':[-27.5954,-48.548],'BLUMENAU':[-26.9194,-49.0661],
+  'SAO JOSE':[-27.5933,-48.6358],'CRICIUMA':[-28.678,-49.3697],'CHAPECO':[-27.1004,-52.6152],
+  'ITAJAI':[-26.9078,-48.6618],'BALNEARIO CAMBORIU':[-26.9906,-48.6348],'LAGES':[-27.816,-50.3262],
+  'JARAGUA DO SUL':[-26.4859,-49.0696],'BRUSQUE':[-27.0986,-48.9157],'PALHOCA':[-27.6453,-48.67],
+  'SAO BENTO DO SUL':[-26.25,-49.38],'INDAIAL':[-26.8976,-49.233],'CAMBORIU':[-27.0244,-48.6558],
+  'ITAPEMA':[-27.0862,-48.6147],'SAO JOAO BATISTA':[-27.2744,-48.8467],'CONCORDIA':[-27.2342,-52.0279],
+  'XANXERE':[-26.8755,-52.4044],'TUBARAO':[-28.4667,-49.0072],'ARARANGUA':[-28.9344,-49.4872],
+  'ARAQUARI':[-26.3725,-48.7256],'BARRA VELHA':[-26.6358,-48.6836],'SAO FRANCISCO DO SUL':[-26.2431,-48.6383],
+  'MAFRA':[-26.1111,-49.8012],'CURITIBANOS':[-27.2842,-50.5817],'CANOINHAS':[-26.1808,-50.3897],
+  'ITAPOA':[-26.1108,-48.6136],'GUARAMIRIM':[-26.4714,-48.9817],'AGROLANDIA':[-27.3914,-49.8339],
+  'AURORA':[-27.3044,-49.6372],'BALNEARIO RINCAO':[-28.8272,-49.2311],'BOM JESUS DO OESTE':[-26.6897,-53.0681],
+  'CAPIVARI DE BAIXO':[-28.4567,-48.9572],'ICARA':[-28.7186,-49.2997],'IMARUI':[-28.3314,-48.8253],
+  'IPUMIRIM':[-27.1675,-52.2144],'ITUPORANGA':[-27.4108,-49.5994],'JARDINOPOLIS':[-26.7281,-52.8628],
+  'LAURO MULLER':[-28.3906,-49.3958],'MORRO DA FUMACA':[-28.6553,-49.2119],'NOVA ERECHIM':[-26.9014,-52.9058],
+  'RIO NEGRINHO':[-26.2567,-49.5217],'SALETE':[-26.9678,-49.9981],'SANTO AMARO DA IMPERATRIZ':[-27.6911,-48.7811],
+  'SAO CRISTOVAO DO SUL':[-27.305,-50.5128],'SUL BRASIL':[-26.7278,-52.9442],'TAIO':[-27.1139,-49.9942],
+  'TIJUCAS':[-27.2414,-48.6344],'URUSSANGA':[-28.5197,-49.3194],'VIDEIRA':[-27.0053,-51.1503],
+};
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+const R = v => v == null ? '—' : 'R$ ' + v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const Rk = v => v == null ? '—' : 'R$ ' + Math.round(v).toLocaleString('pt-BR');
+
+function dbadge(d){
+  if(d>=40) return `<span class="db db-high">${d.toFixed(1)}%</span>`;
+  if(d>=20) return `<span class="db db-mid">${d.toFixed(1)}%</span>`;
+  if(d>0)   return `<span class="db db-low">${d.toFixed(1)}%</span>`;
+  if(d<0)   return `<span class="db db-neg">${d.toFixed(1)}%</span>`;
+  return '<span class="db db-low">—</span>';
+}
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let sortKey = 'desconto';
+let currentPage = 1;
+const PAGE = 20;
+
+// ── FILTERS ──────────────────────────────────────────────────────────────────
+function getFiltered(){
+  const busca = document.getElementById('f-busca').value.toLowerCase();
+  const tipo = document.getElementById('f-tipo').value;
+  const cidade = document.getElementById('f-cidade').value;
+  const modal = document.getElementById('f-modalidade').value;
+  const financ = document.getElementById('f-financ').value;
+  const descMin = parseFloat(document.getElementById('f-desconto').value)||0;
+  const precoMax = parseFloat(document.getElementById('f-preco').value)||Infinity;
+  return DATA.filter(d=>{
+    if(busca && !`${d.cidade} ${d.bairro} ${d.endereco}`.toLowerCase().includes(busca)) return false;
+    if(tipo && d.tipo!==tipo) return false;
+    if(cidade && d.cidade!==cidade) return false;
+    if(modal && d.modalidade!==modal) return false;
+    if(financ && d.financiamento!==financ) return false;
+    if(d.desconto<descMin) return false;
+    if(d.preco>precoMax) return false;
+    return true;
+  });
+}
+
+function getSorted(arr){
+  return [...arr].sort((a,b)=>{
+    if(sortKey==='desconto') return b.desconto-a.desconto;
+    if(sortKey==='preco_asc') return a.preco-b.preco;
+    if(sortKey==='preco_desc') return b.preco-a.preco;
+    if(sortKey==='economia') return b.economia-a.economia;
+    return 0;
+  });
+}
+
+// ── CHARTS ───────────────────────────────────────────────────────────────────
+const charts={};
+function updateCharts(f){
+  // tipo
+  const tc={};f.forEach(d=>tc[d.tipo]=(tc[d.tipo]||0)+1);
+  if(charts.tipo) charts.tipo.destroy();
+  charts.tipo=new Chart(document.getElementById('chart-tipo'),{
+    type:'doughnut',
+    data:{labels:Object.keys(tc),datasets:[{data:Object.values(tc),backgroundColor:['#4a9eff','#8b5cf6','#e6b44a','#5cb85c','#8b949e'],borderWidth:0}]},
+    options:{plugins:{legend:{labels:{color:'#8b949e',font:{size:10}},position:'right'}},cutout:'60%',maintainAspectRatio:false}
+  });
+  // cidades
+  const cc={};f.forEach(d=>cc[d.cidade]=(cc[d.cidade]||0)+1);
+  const sc=Object.entries(cc).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  if(charts.cidades) charts.cidades.destroy();
+  charts.cidades=new Chart(document.getElementById('chart-cidades'),{
+    type:'bar',
+    data:{labels:sc.map(x=>x[0]),datasets:[{data:sc.map(x=>x[1]),backgroundColor:'#e6b44a',borderRadius:4,borderSkipped:false}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8b949e',font:{size:10}},grid:{color:'#21262d'}},y:{ticks:{color:'#e6edf3',font:{size:10}},grid:{display:false}}},maintainAspectRatio:false}
+  });
+  // preço faixas
+  const bk=[0,0,0,0,0];
+  f.forEach(d=>{
+    if(d.preco<150000)bk[0]++;
+    else if(d.preco<300000)bk[1]++;
+    else if(d.preco<500000)bk[2]++;
+    else if(d.preco<1000000)bk[3]++;
+    else bk[4]++;
+  });
+  if(charts.preco) charts.preco.destroy();
+  charts.preco=new Chart(document.getElementById('chart-preco'),{
+    type:'bar',
+    data:{labels:['<150k','150-300k','300-500k','500k-1M','>1M'],datasets:[{data:bk,backgroundColor:['#5cb85c','#4a9eff','#e6b44a','#8b5cf6','#e05252'],borderRadius:4,borderSkipped:false}]},
+    options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8b949e',font:{size:10}},grid:{display:false}},y:{ticks:{color:'#8b949e',font:{size:10}},grid:{color:'#21262d'}}},maintainAspectRatio:false}
+  });
+}
+
+// ── KPIs ─────────────────────────────────────────────────────────────────────
+function updateKPIs(f){
+  document.getElementById('kpi-total').textContent=f.length;
+  document.getElementById('badge-total').textContent=f.length+' imóveis';
+  document.getElementById('f-count').textContent=f.length+' resultados';
+  if(!f.length){['kpi-medio','kpi-maxdesc','kpi-economia','kpi-financ','kpi-min'].forEach(id=>document.getElementById(id).textContent='—');return;}
+  document.getElementById('kpi-medio').textContent='R$ '+Math.round(f.reduce((s,d)=>s+d.preco,0)/f.length).toLocaleString('pt-BR');
+  document.getElementById('kpi-maxdesc').textContent=Math.max(...f.map(d=>d.desconto)).toFixed(1)+'%';
+  document.getElementById('kpi-economia').textContent='R$ '+Math.round(f.filter(d=>d.economia>0).reduce((s,d)=>s+d.economia,0)/1000)+'k';
+  document.getElementById('kpi-financ').textContent=f.filter(d=>d.financiamento==='Sim').length;
+  document.getElementById('kpi-min').textContent='R$ '+Math.round(Math.min(...f.map(d=>d.preco))).toLocaleString('pt-BR');
+}
+
+// ── TABLE ────────────────────────────────────────────────────────────────────
+function render(){
+  const f=getFiltered(), s=getSorted(f);
+  updateKPIs(f); updateCharts(f);
+  const tp=Math.max(1,Math.ceil(s.length/PAGE));
+  if(currentPage>tp) currentPage=1;
+  const page=s.slice((currentPage-1)*PAGE,currentPage*PAGE);
+  document.getElementById('tbody').innerHTML=page.map(d=>`
+    <tr onclick="openModal('${d.id}')">
+      <td><span class="chip chip-${d.tipo}">${d.tipo}</span></td>
+      <td><strong>${d.cidade}</strong><div class="sub">${d.bairro}</div></td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.endereco}</td>
+      <td class="num">${R(d.preco)}</td>
+      <td class="num">${R(d.avaliacao)}</td>
+      <td>${dbadge(d.desconto)}</td>
+      <td class="num ${d.economia>0?'econ-pos':d.economia<0?'econ-neg':''}">${d.economia!==0?(d.economia>0?'+':'')+R(d.economia):'—'}</td>
+      <td style="font-size:11px;color:#8b949e">${d.modalidade}</td>
+      <td><a class="link-btn" href="${d.link}" target="_blank" onclick="event.stopPropagation()">↗</a></td>
+    </tr>`).join('');
+  // pagination
+  const pg=document.getElementById('pagination');
+  pg.innerHTML='';
+  if(tp<=1) return;
+  const mk=(lbl,p,act,dis)=>{
+    const b=document.createElement('button');
+    b.className='page-btn'+(act?' active':'');b.disabled=!!dis;b.textContent=lbl;
+    if(!dis) b.onclick=()=>{currentPage=p;render();};
+    return b;
+  };
+  pg.appendChild(mk('‹',currentPage-1,false,currentPage===1));
+  const st=Math.max(1,currentPage-2),en=Math.min(tp,st+4);
+  for(let i=st;i<=en;i++) pg.appendChild(mk(i,i,i===currentPage));
+  pg.appendChild(mk('›',currentPage+1,false,currentPage===tp));
+}
+
+// ── MODAL ────────────────────────────────────────────────────────────────────
+function openModal(id){
+  const d=DATA.find(x=>x.id===id); if(!d) return;
+  document.getElementById('m-tipo').innerHTML=`<span class="chip chip-${d.tipo}">${d.tipo}</span>`;
+  document.getElementById('m-titulo').textContent=d.cidade+' — '+d.bairro;
+  document.getElementById('m-addr').textContent=d.endereco;
+  document.getElementById('m-financ').innerHTML=d.financiamento==='Sim'
+    ?'<span class="ftag ftag-sim">✓ Aceita Financiamento</span>'
+    :'<span class="ftag ftag-nao">✗ Sem Financiamento</span>';
+  document.getElementById('m-preco').textContent=R(d.preco);
+  document.getElementById('m-aval').textContent=R(d.avaliacao);
+  const de=document.getElementById('m-desc');
+  de.textContent=d.desconto>0?d.desconto.toFixed(2)+'%':'—';
+  de.className='mi-val '+(d.desconto>=40?'mi-green':d.desconto>0?'mi-accent':'');
+  const ec=document.getElementById('m-econ');
+  ec.textContent=d.economia!==0?R(Math.abs(d.economia)):'—';
+  ec.className='mi-val '+(d.economia>0?'mi-green':d.economia<0?'mi-red':'');
+  document.getElementById('m-area').textContent=d.area_total?d.area_total.toFixed(2)+' m²':'—';
+  document.getElementById('m-terreno').textContent=d.area_terreno>0?d.area_terreno.toFixed(2)+' m²':'—';
+  document.getElementById('m-quartos').textContent=d.quartos>0?d.quartos:'—';
+  document.getElementById('m-m2').textContent=d.preco_m2?'R$ '+d.preco_m2.toFixed(2)+'/m²':'—';
+  document.getElementById('m-mod').textContent='📋 '+d.modalidade;
+  document.getElementById('m-link').href=d.link;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(e){
+  if(!e||e.target===document.getElementById('modal-overlay'))
+    document.getElementById('modal-overlay').classList.remove('open');
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+// ── TABS ─────────────────────────────────────────────────────────────────────
+let mapReady=false;
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const tab=btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+tab).classList.add('active');
+    if(tab==='mapa'&&!mapReady) initMap();
+  });
+});
+
+// ── SORT ─────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.sort-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    sortKey=b.dataset.sort; currentPage=1;
+    document.querySelectorAll('.sort-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    render();
+  });
+});
+
+// ── FILTER EVENTS ────────────────────────────────────────────────────────────
+['f-busca','f-tipo','f-cidade','f-modalidade','f-financ','f-desconto','f-preco'].forEach(id=>{
+  document.getElementById(id).addEventListener('change',()=>{currentPage=1;render();});
+  document.getElementById(id).addEventListener('input',()=>{currentPage=1;render();});
+});
+function resetFilters(){
+  ['f-busca','f-tipo','f-cidade','f-modalidade','f-financ'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-desconto').value='0';
+  document.getElementById('f-preco').value='';
+  currentPage=1; render();
+}
+
+// ── POPULATE CITY FILTER + DATALIST ──────────────────────────────────────────
+(function(){
+  const sel=document.getElementById('f-cidade');
+  const dl=document.getElementById('map-cidades-dl');
+  [...new Set(DATA.map(d=>d.cidade))].sort().forEach(c=>{
+    const o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o);
+    const o2=document.createElement('option'); o2.value=c; dl.appendChild(o2);
+  });
+})();
+
+// ── MAP ──────────────────────────────────────────────────────────────────────
+let map, markersLayer, circleLayer;
+
+function initMap(){
+  map=L.map('map-wrap').setView([-27.5,-49.5],7);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',maxZoom:18
+  }).addTo(map);
+  markersLayer=L.layerGroup().addTo(map);
+  mapReady=true;
+}
+
+function haversine(lat1,lon1,lat2,lon2){
+  const R=6371,d2r=Math.PI/180;
+  const dLat=(lat2-lat1)*d2r, dLon=(lon2-lon1)*d2r;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*d2r)*Math.cos(lat2*d2r)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function pinColor(d){ return d>=40?'#5cb85c':d>=20?'#e6b44a':d>0?'#4a9eff':'#8b949e'; }
+
+function makePin(desconto){
+  const c=pinColor(desconto);
+  return L.divIcon({
+    html:`<svg xmlns="http://www.w3.org/2000/svg" width="26" height="34" viewBox="0 0 26 34">
+      <path d="M13 0C5.82 0 0 5.82 0 13c0 9.75 13 21 13 21s13-11.25 13-21C26 5.82 20.18 0 13 0z" fill="${c}" stroke="rgba(0,0,0,.25)" stroke-width="1"/>
+      <circle cx="13" cy="13" r="5" fill="white" opacity=".9"/>
+    </svg>`,
+    className:'',iconSize:[26,34],iconAnchor:[13,34],popupAnchor:[0,-34]
+  });
+}
+
+function buscarMapa(){
+  const cidade=(document.getElementById('map-cidade').value||'').trim().toUpperCase();
+  const raio=parseInt(document.getElementById('map-raio').value);
+  const tipo=document.getElementById('map-tipo').value;
+  const descMin=parseFloat(document.getElementById('map-desc').value)||0;
+  const status=document.getElementById('map-status');
+  const btn=document.getElementById('btn-buscar');
+
+  if(!cidade){
+    status.className='map-status err';
+    status.textContent='❌ Informe uma cidade de referência.';
+    return;
+  }
+  const center=COORDS[cidade];
+  if(!center){
+    status.className='map-status err';
+    status.textContent=`❌ Cidade "${cidade}" não encontrada. Use exatamente como aparece na lista (ex: JOINVILLE).`;
+    return;
+  }
+
+  btn.disabled=true; btn.textContent='⏳ Calculando...';
+  status.className='map-status loading'; status.textContent='Filtrando imóveis...';
+  markersLayer.clearLayers();
+  if(circleLayer){map.removeLayer(circleLayer);}
+
+  // Draw radius circle
+  circleLayer=L.circle(center,{radius:raio*1000,color:'#e6b44a',fillColor:'#e6b44a',fillOpacity:.06,weight:2,dashArray:'6 4'}).addTo(map);
+
+  // Center marker
+  L.marker(center,{icon:L.divIcon({
+    html:`<div style="width:14px;height:14px;border-radius:50%;background:#e6b44a;border:3px solid #fff;box-shadow:0 0 6px rgba(0,0,0,.5)"></div>`,
+    className:'',iconSize:[14,14],iconAnchor:[7,7]
+  })}).addTo(map).bindPopup(`<b>📍 ${cidade}</b><br>Centro · raio ${raio}km`);
+
+  // Filter & place markers
+  const jitter=()=>(Math.random()-.5)*.01;
+  let count=0;
+
+  DATA.forEach(d=>{
+    if(tipo&&d.tipo!==tipo) return;
+    if(d.desconto<descMin) return;
+    const c=COORDS[d.cidade];
+    if(!c) return;
+    const dist=haversine(center[0],center[1],c[0],c[1]);
+    if(dist>raio) return;
+    count++;
+    const lat=c[0]+jitter(), lon=c[1]+jitter();
+    const popup=`<div style="font-family:sans-serif;min-width:210px">
+      <div style="font-size:11px;color:#888;margin-bottom:3px">${d.tipo} · ${d.modalidade}</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:2px">${d.cidade} — ${d.bairro}</div>
+      <div style="font-size:11px;color:#666;margin-bottom:8px">${d.endereco}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px;font-size:12px">
+        <div><div style="color:#888;font-size:10px">PREÇO</div><b>${Rk(d.preco)}</b></div>
+        <div><div style="color:#888;font-size:10px">DESCONTO</div><b style="color:${pinColor(d.desconto)}">${d.desconto>0?d.desconto.toFixed(1)+'%':'—'}</b></div>
+        <div><div style="color:#888;font-size:10px">AVALIAÇÃO</div>${Rk(d.avaliacao)}</div>
+        <div><div style="color:#888;font-size:10px">ECONOMIA</div><span style="color:${d.economia>0?'#5cb85c':d.economia<0?'#e05252':'#888'}">${d.economia>0?'+':''}${Rk(d.economia)}</span></div>
+      </div>
+      <a href="${d.link}" target="_blank" style="display:block;text-align:center;background:#e6b44a;color:#000;font-weight:700;padding:7px;border-radius:6px;text-decoration:none;font-size:12px">🔗 Ver na Caixa</a>
+    </div>`;
+    L.marker([lat,lon],{icon:makePin(d.desconto)}).addTo(markersLayer).bindPopup(popup,{maxWidth:270});
+  });
+
+  map.fitBounds(circleLayer.getBounds(),{padding:[20,20]});
+  document.getElementById('map-count').textContent=count;
+  status.className='map-status ok';
+  status.textContent=count>0
+    ? `✅ ${count} imóveis encontrados em ${raio}km de ${cidade}`
+    : `ℹ️ Nenhum imóvel encontrado nesse raio com os filtros aplicados.`;
+  btn.disabled=false; btn.textContent='🔍 Buscar';
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
